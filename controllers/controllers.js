@@ -18,11 +18,9 @@ const handleCreatePost = async (req, res) => {
     typeof url !== "string" ||
     typeof descripcion !== "string"
   ) {
-    return res
-      .status(400)
-      .json({
-        error: "Tipos de datos invalidos para los campos; deben ser strings.",
-      });
+    return res.status(400).json({
+      error: "Tipos de datos invalidos para los campos; deben ser strings.",
+    });
   }
 
   try {
@@ -31,7 +29,8 @@ const handleCreatePost = async (req, res) => {
       [titulo, url, descripcion]
     );
 
-    res.json(rows[0]);
+    res.json({ message: "Post creado exitosamente", post: rows[0] });
+    console.log("Post creado exitosamente");
   } catch (error) {
     console.error("Error ejecutando POST request:", error);
     res.status(500).send("Internal Server Error");
@@ -42,27 +41,41 @@ const handleUpdatePost = async (req, res) => {
   const { id } = req.params;
   const { likes } = req.body;
 
-  if (!likes) {
+  if (likes === undefined) {
     return res.status(400).json({ error: "El campo 'likes' es requerido." });
   }
 
-  if (!Number.isInteger(likes)) {
-    return res
-      .status(400)
-      .json({ error: "'Likes' deben ser un numero entero." });
-  }
-
   try {
+    let updatedLikes;
+
+    if (typeof likes === "boolean") {
+      if (likes == true) {
+        updatedLikes = 1;
+      } else {
+        updatedLikes = -1;
+      }
+    } else if (typeof likes === "number") {
+      updatedLikes = likes;
+    } else {
+      return res
+        .status(400)
+        .json({
+          error: "El campo 'likes' debe ser un numero o un valor booleano.",
+        });
+    }
+
+    /*  updatedLikes = Math.max(updatedLikes, 0); */
+
     const { rows } = await pool.query(
-      "UPDATE posts SET likes = $1 WHERE id = $2 RETURNING *",
-      [likes, id]
+      "UPDATE posts SET likes = likes + $1 WHERE id = $2 RETURNING *",
+      [updatedLikes, id]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Post no encontrado." });
     }
 
-    res.json(rows[0]);
+    res.json({ message: "Post actualizado correctamente", post: rows[0] });
   } catch (error) {
     console.error("Error ejecutando PUT request:", error);
     res.status(500).send("Internal Server Error");
@@ -82,7 +95,8 @@ const handleDeletePost = async (req, res) => {
       return res.status(404).json({ error: "Post no encontrado." });
     }
 
-    res.status(204).send();
+    res.json({ message: "Post eliminado exitosamente" });
+    console.log("Post eliminado exitosamente");
   } catch (error) {
     console.error("Error ejecutando DELETE request:", error);
     res.status(500).send("Internal Server Error");
